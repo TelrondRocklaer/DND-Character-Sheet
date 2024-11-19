@@ -13,7 +13,7 @@ const config: Config = {
         secondary: "#d62828ff",   // Fire Engine Red
         background: "#210124ff",  // Dark Purple
         text: "#f9dbbdff",        // Light Orange
-      },
+      }
     },
   },
   plugins: [],
