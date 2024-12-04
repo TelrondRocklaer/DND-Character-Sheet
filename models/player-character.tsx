@@ -10,28 +10,23 @@ class PlayerCharacter {
   temporaryHitPoints: number = 0;
   movementSpeed: number = 0;
   numberOfActions: number = 1;
+  inspiration: boolean = false;
   numberOfBonusActions: number = 1;
   numberOfReactions: number = 1;
   numberOfSpecialPoints: number = 0;
   currentNumberOfSpecialPoints: number = 0;
   spellSlots: { level: number, maxSlots: number, currentSlots: number }[] = [];
-  wearsArmor: boolean = false;
-  isShieldEquipped: boolean = false;
   armorClass: number = 10;
   attributes: Attributes = new Attributes();
   resistances: Resistance = new Resistance();
   advantageOnConcentrationSavingThrows: boolean | undefined;
   advantageOnDeathSavingThrows: boolean | undefined;
-  advantageOnAttackRolls: boolean | undefined;
-  attackersHaveAdvantageOnAttackRolls: boolean | undefined;
-  advantageOnAbilityChecks: boolean | undefined;
   spellAttackRollBonus: number = 0;
   weaponAttackRollBonus: number = 0;
   concentrating: boolean = false;
-  threatened: boolean = false;
   exhaustion: number = 0;
-  proficiencies: string[] = [];
-  notes: string[] = [];
+  proficiencies: { type: string, proficiency: string}[] = [];
+  notes: { title: string, content: string }[] = [];
 
   constructor(id: string) {
     this.id = id;
@@ -43,6 +38,14 @@ class PlayerCharacter {
 
   public passivePerception = () : number => {
     return 10 + this.attributes.wisdom.modifier() + (this.attributes.wisdom.get("perception")?.proficient ? this.proficiencyBonus() : 0);
+  }
+
+  public passiveInvestigation = () : number => {
+    return 10 + this.attributes.intelligence.modifier() + (this.attributes.intelligence.get("investigation")?.proficient ? this.proficiencyBonus() : 0);
+  }
+
+  public passiveInsight = () : number => {
+    return 10 + this.attributes.wisdom.modifier() + (this.attributes.wisdom.get("insight")?.proficient ? this.proficiencyBonus() : 0);
   }
 }
 

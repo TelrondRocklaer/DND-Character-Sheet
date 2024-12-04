@@ -1,10 +1,10 @@
 class Attributes {
-  strength: Attribute = new Attribute("Strength", "STR", 10, [new Skill("athletics")]);
-  dexterity: Attribute = new Attribute("Dexterity", "DEX", 10, [new Skill("acrobatics"), new Skill("sleightOfHand"), new Skill("stealth")]);
+  strength: Attribute = new Attribute("Strength", "STR", 10, [new Skill("Athletics")]);
+  dexterity: Attribute = new Attribute("Dexterity", "DEX", 10, [new Skill("Acrobatics"), new Skill("Sleight Of Hand"), new Skill("Stealth")]);
   constitution: Attribute = new Attribute("Constitution", "CON", 10, []);
-  intelligence: Attribute = new Attribute("Intelligence", "INT", 10, [new Skill("arcana"), new Skill("history"), new Skill("investigation"), new Skill("nature"), new Skill("religion")]);
-  wisdom: Attribute = new Attribute("Wisdom", "WIS", 10, [new Skill("animalHandling"), new Skill("insight"), new Skill("medicine"), new Skill("perception"), new Skill("survival")]);
-  charisma: Attribute = new Attribute("Charisma", "CHA", 10, [new Skill("deception"), new Skill("intimidation"), new Skill("performance"), new Skill("persuasion")]);
+  intelligence: Attribute = new Attribute("Intelligence", "INT", 10, [new Skill("Arcana"), new Skill("History"), new Skill("Investigation"), new Skill("Nature"), new Skill("Religion")]);
+  wisdom: Attribute = new Attribute("Wisdom", "WIS", 10, [new Skill("Animal Handling"), new Skill("Insight"), new Skill("Medicine"), new Skill("Perception"), new Skill("Survival")]);
+  charisma: Attribute = new Attribute("Charisma", "CHA", 10, [new Skill("Deception"), new Skill("Intimidation"), new Skill("Performance"), new Skill("Persuasion")]);
 
   public get(name: string): Attribute | undefined {
     return (this as any)[name];
@@ -12,6 +12,11 @@ class Attributes {
 
   public getAttributes = () : Attribute[] => {
     return [this.strength, this.dexterity, this.constitution, this.intelligence, this.wisdom, this.charisma];
+  }
+
+  public getSkills = () : Skill[] => {
+    return this.getAttributes().reduce((acc: Skill[], attribute: Attribute) => acc.concat(attribute.skills), [])
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 }
 
@@ -29,7 +34,10 @@ class Attribute {
     this.shortName = shortName;
     this.value = value;
     this.proficientInSavingThrows = false;
-    this.skills = skills;
+    this.skills = skills.map(skill => {
+      skill.parentAttribute = this;
+      return skill;
+    });
   }
 
   public modifier = () : number => {
@@ -44,11 +52,12 @@ class Skill {
   name: string;
   proficient: boolean;
   advantageOnChecks: boolean | undefined;
+  parentAttribute: Attribute;
 
   constructor(name: string) {
     this.name = name;
     this.proficient = false;
+    this.parentAttribute = new Attribute("", "", 0, []);
   }
 }
-
 export default Attributes;

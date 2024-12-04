@@ -10,7 +10,8 @@ interface DiceRollerProps {
   advantage?: boolean;
   isVisible: boolean;
   rollKey: number;
-  getResult?: (result: number) => void;
+  inspiration?: boolean;
+  getResult?: (result: number, inspirationUsed: boolean) => void;
 }
 
 const parseDiceInfo = (diceInfo: string) => {
@@ -65,9 +66,9 @@ const draw = {
   }
 };
 
-export default function DiceRoller({ rollName, diceInfo, advantage: initialAdvantage, isVisible, rollKey, getResult }: DiceRollerProps) {
+export default function DiceRoller({ rollName, diceInfo, advantage: initialAdvantage, isVisible, rollKey, inspiration, getResult }: DiceRollerProps) {
   const [mainRollResults, setMainRollResults] = useState<{ result: number, sides: number }[] | null>(null);
-  const [extraRollResults, setOtherRollResults] = useState<{ result: number, sides: number }[] | null>(null);
+  const [extraRollResults, setExtraRollResults] = useState<{ result: number, sides: number }[] | null>(null);
   const [totalResult, setTotalResult] = useState<number>(0);
   const [modifier, setModifier] = useState<number>(0);
   const [advantage, setAdvantage] = useState<boolean | undefined>(initialAdvantage);
@@ -75,13 +76,14 @@ export default function DiceRoller({ rollName, diceInfo, advantage: initialAdvan
   const [aAColor, setAAColor] = useState("#494949")
   const [dAAColor, setDAColor] = useState("#494949")
   const [lastClick, setLastClick] = useState<boolean | undefined>(undefined);
+  const [inspirationUsed, setInspirationUsed] = useState<boolean>(false);
 
   useEffect(() => {
     const storedRoll = sessionStorage.getItem("Roll" + rollKey);
     if (storedRoll) {
       const { mainRollResults, extraRollResults, totalResult, modifier, naturalRoll } = JSON.parse(storedRoll);
       setMainRollResults(mainRollResults);
-      setOtherRollResults(extraRollResults);
+      setExtraRollResults(extraRollResults);
       setTotalResult(totalResult);
       setModifier(modifier);
       setNaturalRoll(naturalRoll);
@@ -131,7 +133,7 @@ export default function DiceRoller({ rollName, diceInfo, advantage: initialAdvan
     }
 
     setMainRollResults(mainTotal);
-    setOtherRollResults(otherTotal);
+    setExtraRollResults(otherTotal);
     setModifier(modifier);
     setTotalResult(total);
     setNaturalRoll(natRoll);
@@ -176,6 +178,7 @@ export default function DiceRoller({ rollName, diceInfo, advantage: initialAdvan
       setLastClick(undefined)
       setAAColor("#494949")
       setDAColor("#494949")
+      setInspirationUsed(false)
     }
   }, [initialAdvantage, advantage, lastClick])
 
@@ -183,8 +186,19 @@ export default function DiceRoller({ rollName, diceInfo, advantage: initialAdvan
     return null;
   }
   return (
-    <div className="fixed flex flex-col items-center bg-background size-full z-50">
+    <div className="fixed flex flex-col items-center bg-background size-full z-50 select-none">
       {rollName && <h2 className="text-3xl mt-10">{rollName} ({diceInfo})</h2>}
+      {mainRollResults !== null && inspiration === true && !inspirationUsed &&
+          <motion.div className="text-2xl mt-2 z-10" whileHover={{scale: 1.05}}
+                      onClick={() => {
+                        setInspirationUsed(true)
+                        setMainRollResults(null)
+                        setExtraRollResults(null)
+                      }}
+          >
+              <Image src={(!inspirationUsed ? "/" : "/no-") + "inspiration-sunrise.svg"} alt="inspiration-sunrise" width={50} height={50} />
+          </motion.div>
+      }
 
       {mainRollResults !== null && extraRollResults !== null && (
         <motion.svg className={"top-10 right-10 absolute"}
@@ -197,9 +211,9 @@ export default function DiceRoller({ rollName, diceInfo, advantage: initialAdvan
                       if (getResult) {
                         sessionStorage.setItem("Roll" + rollKey, JSON.stringify({ mainRollResults, extraRollResults, totalResult, modifier, naturalRoll }));
                         if (naturalRoll === null) {
-                          getResult(totalResult + modifier);
+                          getResult(totalResult + modifier, inspirationUsed);
                         } else {
-                          getResult(naturalRoll ? -20 : -1);
+                          getResult(naturalRoll ? -20 : -1, inspirationUsed);
                         }
                       }
                     }}
@@ -216,7 +230,7 @@ export default function DiceRoller({ rollName, diceInfo, advantage: initialAdvan
         </motion.svg>
       )}
 
-      <div className="flex flex-col justify-center min-h-screen">
+      <div className="flex flex-col justify-center min-h-screen absolute mt-10">
         {mainRollResults === null && (
           <div className="flex flex-row items-center space-x-32">
 
