@@ -6,8 +6,13 @@ class Attributes {
   wisdom: Attribute = new Attribute("Wisdom", "WIS", 10, [new Skill("Animal Handling"), new Skill("Insight"), new Skill("Medicine"), new Skill("Perception"), new Skill("Survival")]);
   charisma: Attribute = new Attribute("Charisma", "CHA", 10, [new Skill("Deception"), new Skill("Intimidation"), new Skill("Performance"), new Skill("Persuasion")]);
 
-  public get(name: string): Attribute | undefined {
-    return (this as any)[name];
+  public getAttribute(name: string): Attribute | undefined {
+    return (this as any)[name.toLowerCase()];
+  }
+
+  public getSkill(name: string): Skill | undefined {
+    return this.getAttributes().reduce((acc: Skill[], attribute: Attribute) => acc.concat(attribute.skills), [])
+      .find(skill => skill.name === name);
   }
 
   public getAttributes = () : Attribute[] => {

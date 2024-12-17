@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, {useState, useCallback, useEffect} from 'react';
 import Image from 'next/image';
-import { motion } from 'framer-motion';
+import {motion} from 'framer-motion';
 
 interface DiceRollerProps {
   rollName?: string;
@@ -14,7 +14,31 @@ interface DiceRollerProps {
   getResult?: (result: number, inspirationUsed: boolean) => void;
 }
 
+const simplifyDiceInfo = (diceInfo: string): string => {
+  const diceMap: { [key: string]: number } = {};
+  let modifier = 0;
+  diceInfo.split(/(?=[+-])/).forEach(part => {
+    const isNegative = part.startsWith('-');
+    const cleanPart = part.replace(/[+-]/, '');
+    if (cleanPart.includes('d')) {
+      const [count, sides] = cleanPart.split('d').map(Number);
+      const key = `d${sides}`;
+      const value = (isNegative ? -1 : 1) * (count || 1);
+      diceMap[key] = (diceMap[key] || 0) + value;
+    } else {
+      modifier += (isNegative ? -1 : 1) * Number(cleanPart);
+    }
+  });
+  const simplifiedDice = Object.entries(diceMap)
+    .filter(([_, count]) => count !== 0)
+    .map(([sides, count]) => `${count === 1 ? '' : count}${sides}`)
+    .join('+');
+  const simplifiedModifier = modifier !== 0 ? (modifier > 0 ? `+${modifier}` : `${modifier}`) : '';
+  return `${simplifiedDice}${simplifiedModifier}` || '0';
+};
+
 const parseDiceInfo = (diceInfo: string) => {
+  diceInfo = simplifyDiceInfo(diceInfo);
   const input = diceInfo.split(/(?=[+-])/).map(String);
   return input.map(die => {
     const isNegative = die.startsWith('-');
@@ -32,7 +56,7 @@ const parseDiceInfo = (diceInfo: string) => {
 
 const rollSingleDie = (sides: number) => Math.floor(Math.random() * sides) + 1;
 
-const chunkArray = <T,>(array: T[], size: number): T[][] => {
+const chunkArray = <T, >(array: T[], size: number): T[][] => {
   const chunkedArr = [];
   for (let i = 0; i < array.length; i += size) {
     chunkedArr.push(array.slice(i, i + size));
@@ -41,32 +65,40 @@ const chunkArray = <T,>(array: T[], size: number): T[][] => {
 };
 
 const diceVariants = {
-  hidden: { opacity: 0, y: 20, rotate: 0 },
-  visible: { opacity: 1, y: 0, rotate: 360 },
+  hidden: {opacity: 0, y: 20, rotate: 0},
+  visible: {opacity: 1, y: 0, rotate: 360},
 };
 
 const resultVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
+  hidden: {opacity: 0, y: 20},
+  visible: {opacity: 1, y: 0},
 };
 
 // noinspection JSUnusedGlobalSymbols
 const draw = {
-  hidden: { pathLength: 0, opacity: 0 },
+  hidden: {pathLength: 0, opacity: 0},
   visible: (i: number) => {
     const delay = 1 + i * 0.5;
     return {
       pathLength: 1,
       opacity: 1,
       transition: {
-        pathLength: { delay, type: "spring", duration: 1.5 },
-        opacity: { delay, duration: 0.01 }
+        pathLength: {delay, type: "spring", duration: 1.5},
+        opacity: {delay, duration: 0.01}
       }
     };
   }
 };
 
-export default function DiceRoller({ rollName, diceInfo, advantage: initialAdvantage, isVisible, rollKey, inspiration, getResult }: DiceRollerProps) {
+export default function DiceRoller({
+                                     rollName,
+                                     diceInfo,
+                                     advantage: initialAdvantage,
+                                     isVisible,
+                                     rollKey,
+                                     inspiration,
+                                     getResult
+                                   }: DiceRollerProps) {
   const [mainRollResults, setMainRollResults] = useState<{ result: number, sides: number }[] | null>(null);
   const [extraRollResults, setExtraRollResults] = useState<{ result: number, sides: number }[] | null>(null);
   const [totalResult, setTotalResult] = useState<number>(0);
@@ -81,7 +113,7 @@ export default function DiceRoller({ rollName, diceInfo, advantage: initialAdvan
   useEffect(() => {
     const storedRoll = sessionStorage.getItem("Roll" + rollKey);
     if (storedRoll) {
-      const { mainRollResults, extraRollResults, totalResult, modifier, naturalRoll } = JSON.parse(storedRoll);
+      const {mainRollResults, extraRollResults, totalResult, modifier, naturalRoll} = JSON.parse(storedRoll);
       setMainRollResults(mainRollResults);
       setExtraRollResults(extraRollResults);
       setTotalResult(totalResult);
@@ -100,7 +132,7 @@ export default function DiceRoller({ rollName, diceInfo, advantage: initialAdvan
 
     dice.forEach(([num, sides, isNegative], index) => {
       if (num === 0) {
-        modifier += isNegative ? sides : sides;
+        modifier += isNegative ? -sides : sides;
       } else {
         for (let i = 0; i < num; i++) {
           const roll1 = rollSingleDie(sides);
@@ -109,10 +141,10 @@ export default function DiceRoller({ rollName, diceInfo, advantage: initialAdvan
             : (advantage === false && roll2) ? Math.min(roll1, roll2!) : roll1;
           const result = isNegative ? -rollResult : rollResult;
           if (index === 0 && (num === 1 || sides === 20)) {
-            mainTotal.push({ result, sides });
+            mainTotal.push({result, sides});
             total += result;
             if (roll2 !== null) {
-              mainTotal.push({ result: isNegative ? -roll2 : roll2, sides });
+              mainTotal.push({result: isNegative ? -roll2 : roll2, sides});
             }
             if (rollResult === 20) {
               natRoll = true;
@@ -120,7 +152,7 @@ export default function DiceRoller({ rollName, diceInfo, advantage: initialAdvan
               natRoll = false;
             }
           } else {
-            otherTotal.push({ result, sides });
+            otherTotal.push({result, sides});
             total += result;
           }
         }
@@ -146,9 +178,9 @@ export default function DiceRoller({ rollName, diceInfo, advantage: initialAdvan
           <motion.div key={index}
                       className={(rollResults.length < 6 ? "relative w-32 h-32" : "relative w-16 h-16")}
                       initial="hidden" animate="visible" variants={diceVariants}
-                      transition={{ duration: 0.5, delay: (chunkIndex * chunkSize + index) * 0.05 }}
+                      transition={{duration: 0.5, delay: (chunkIndex * chunkSize + index) * 0.05}}
           >
-            <Image src={"/dice/d" + roll.sides + ".svg"} className="object-contain" fill alt="Dice" />
+            <Image src={"/dice/d" + roll.sides + ".svg"} className="object-contain" fill alt="Dice"/>
             <p className="absolute inset-0 flex items-center justify-center text-center">{roll.result}</p>
           </motion.div>
         ))}
@@ -160,21 +192,17 @@ export default function DiceRoller({ rollName, diceInfo, advantage: initialAdvan
     if (initialAdvantage === undefined && advantage === undefined) {
       setAAColor("#494949")
       setDAColor("#494949")
-    }
-    else if ((initialAdvantage || !initialAdvantage) && advantage === undefined) {
+    } else if ((initialAdvantage || !initialAdvantage) && advantage === undefined) {
       setAAColor("#84DD63")
       setDAColor("#FF4D4D")
-    }
-    else if ((initialAdvantage === undefined || initialAdvantage) && advantage === true) {
+    } else if ((initialAdvantage === undefined || initialAdvantage) && advantage === true) {
       setAAColor("#84DD63")
       setDAColor("#494949")
-    }
-    else if ((initialAdvantage === undefined || !initialAdvantage) && advantage === false) {
+    } else if ((initialAdvantage === undefined || !initialAdvantage) && advantage === false) {
       setAAColor("#494949")
       setDAColor("#FF4D4D")
-    }
-    else if ((initialAdvantage === undefined && advantage === true && lastClick) ||
-             (initialAdvantage === undefined && advantage === false && !lastClick)) {
+    } else if ((initialAdvantage === undefined && advantage === true && lastClick) ||
+      (initialAdvantage === undefined && advantage === false && !lastClick)) {
       setLastClick(undefined)
       setAAColor("#494949")
       setDAColor("#494949")
@@ -187,7 +215,7 @@ export default function DiceRoller({ rollName, diceInfo, advantage: initialAdvan
   }
   return (
     <div className="fixed flex flex-col items-center bg-background size-full z-50 select-none">
-      {rollName && <h2 className="text-3xl mt-10">{rollName} ({diceInfo})</h2>}
+      {rollName && <h2 className="text-3xl mt-10">{rollName} ({simplifyDiceInfo(diceInfo)})</h2>}
       {mainRollResults !== null && inspiration === true && !inspirationUsed &&
           <motion.div className="text-2xl mt-2 z-10" whileHover={{scale: 1.05}}
                       onClick={() => {
@@ -196,7 +224,8 @@ export default function DiceRoller({ rollName, diceInfo, advantage: initialAdvan
                         setExtraRollResults(null)
                       }}
           >
-              <Image src={(!inspirationUsed ? "/" : "/no-") + "inspiration-sunrise.svg"} alt="inspiration-sunrise" width={50} height={50} />
+              <Image src={(!inspirationUsed ? "/" : "/no-") + "inspiration-sunrise.svg"} alt="inspiration-sunrise"
+                     width={50} height={50}/>
           </motion.div>
       }
 
@@ -209,7 +238,13 @@ export default function DiceRoller({ rollName, diceInfo, advantage: initialAdvan
                     animate="visible"
                     onClick={() => {
                       if (getResult) {
-                        sessionStorage.setItem("Roll" + rollKey, JSON.stringify({ mainRollResults, extraRollResults, totalResult, modifier, naturalRoll }));
+                        sessionStorage.setItem("Roll" + rollKey, JSON.stringify({
+                          mainRollResults,
+                          extraRollResults,
+                          totalResult,
+                          modifier,
+                          naturalRoll
+                        }));
                         if (naturalRoll === null) {
                           getResult(totalResult + modifier, inspirationUsed);
                         } else {
@@ -240,24 +275,24 @@ export default function DiceRoller({ rollName, diceInfo, advantage: initialAdvan
                           setLastClick(true)
                           setAdvantage(advantage === true ? undefined : (initialAdvantage === undefined ? true :
                             (advantage === false ? undefined : initialAdvantage)))
-                          }
                         }
-                        whileHover={{ scale: 1.1 }}
-                        animate={aAColor == "#84DD63" ? { y: -50 } : { y: 0 }}
+                        }
+                        whileHover={{scale: 1.1}}
+                        animate={aAColor == "#84DD63" ? {y: -50} : {y: 0}}
             >
-              <motion.line x1="200" y1="200" x2="100" y2="0" stroke={aAColor} strokeWidth={3} />
-              <motion.line x1="100" y1="0" x2="0" y2="200" stroke={aAColor} strokeWidth={3} />
-              <motion.line x1="200" y1="200" x2="100" y2="100" stroke={aAColor} strokeWidth={3} />
-              <motion.line x1="100" y1="100" x2="0" y2="200" stroke={aAColor} strokeWidth={3} />
+              <motion.line x1="200" y1="200" x2="100" y2="0" stroke={aAColor} strokeWidth={3}/>
+              <motion.line x1="100" y1="0" x2="0" y2="200" stroke={aAColor} strokeWidth={3}/>
+              <motion.line x1="200" y1="200" x2="100" y2="100" stroke={aAColor} strokeWidth={3}/>
+              <motion.line x1="100" y1="100" x2="0" y2="200" stroke={aAColor} strokeWidth={3}/>
             </motion.svg>
 
             <motion.div className="relative w-72 h-72"
                         onClick={rollDice}
-                        animate={{ rotate: [0, 360] }}
-                        transition={{ duration: 8, ease: "linear", repeat: Infinity }}
-                        whileHover={{ rotate: 360, transition: { duration: 0.2 } }}
+                        animate={{rotate: [0, 360]}}
+                        transition={{duration: 8, ease: "linear", repeat: Infinity}}
+                        whileHover={{rotate: 360, transition: {duration: 0.2}}}
             >
-              <Image src="/dice/d20.svg" className="object-contain" fill alt="d20" />
+              <Image src="/dice/d20.svg" className="object-contain" fill alt="d20"/>
               <p className="absolute inset-0 flex items-center justify-center text-center text-2xl">Roll</p>
             </motion.div>
 
@@ -266,20 +301,20 @@ export default function DiceRoller({ rollName, diceInfo, advantage: initialAdvan
                         onClick={() => {
                           setLastClick(false)
                           setAdvantage(advantage === false ? undefined : (initialAdvantage === undefined ? false :
-                          (advantage === true ? undefined : initialAdvantage)))
-                          }
+                            (advantage === true ? undefined : initialAdvantage)))
                         }
-                        whileHover={{ scale: 1.1 }}
-                        animate={dAAColor == "#FF4D4D" ? { y: 50 } : { y: 0 }}
+                        }
+                        whileHover={{scale: 1.1}}
+                        animate={dAAColor == "#FF4D4D" ? {y: 50} : {y: 0}}
             >
               <motion.line x1="0" y1="0" x2="100" y2="200" stroke={dAAColor}
-                           strokeWidth={3} variants={draw} custom={0} />
+                           strokeWidth={3} variants={draw} custom={0}/>
               <motion.line x1="100" y1="200" x2="200" y2="0" stroke={dAAColor}
-                           strokeWidth={3} variants={draw} custom={0.5} />
+                           strokeWidth={3} variants={draw} custom={0.5}/>
               <motion.line x1="0" y1="0" x2="100" y2="100" stroke={dAAColor}
-                           strokeWidth={3} variants={draw} custom={1} />
+                           strokeWidth={3} variants={draw} custom={1}/>
               <motion.line x1="100" y1="100" x2="200" y2="0" stroke={dAAColor}
-                           strokeWidth={3} variants={draw} custom={1.5} />
+                           strokeWidth={3} variants={draw} custom={1.5}/>
             </motion.svg>
 
           </div>
@@ -304,10 +339,14 @@ export default function DiceRoller({ rollName, diceInfo, advantage: initialAdvan
               {totalResult !== 0 && (
                 <motion.div className="flex flex-col items-center text-3xl"
                             initial="hidden" animate="visible" variants={resultVariants}
-                            transition={{ duration: 0.5, delay: Math.max(mainRollResults.length, extraRollResults.length) * 0.05 + 0.5 }}
+                            transition={{
+                              duration: 0.5,
+                              delay: Math.max(mainRollResults.length, extraRollResults.length) * 0.05 + 0.5
+                            }}
                 >
                   {modifier !== 0 && <p>Modifier: {modifier > 0 ? "+" + modifier : modifier}</p>}
-                  {naturalRoll !== null && <p>{("NAT " + (naturalRoll ? 20 : 1) + " (Total: " + (totalResult + modifier) + ")")}</p>}
+                  {naturalRoll !== null &&
+                      <p>{("NAT " + (naturalRoll ? 20 : 1) + " (Total: " + (totalResult + modifier) + ")")}</p>}
                   {naturalRoll === null && <p>Total: {totalResult + modifier}</p>}
                 </motion.div>
               )}
