@@ -1,0 +1,7 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer Hexagon -->
+  <polygon points="30,60 30,140 100,180 170,140 170,60 100,20" stroke="#c19976" fill="none"/>
+  
+  <!-- Central Triangle Touching All Sides -->
+  <polygon points="100,20 30,140 170,140" stroke="#c19976" fill="none"/>
+</svg>

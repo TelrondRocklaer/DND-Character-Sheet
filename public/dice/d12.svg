@@ -1,0 +1,14 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer Decagon -->
+  <polygon points="100,180 148,168 178,125 178,75 148,32 100,20 52,32 22,75 22,125 52,168" stroke="#c19976" fill="none"/>
+
+  <!-- Internal Pentagon -->
+  <polygon points="127,140 144,85 100,50 56,85 73,140" stroke="#c19976" fill="none" />
+
+  <!-- Internal Lines -->
+  <line x1="148" y1="168" x2="127" y2="140" stroke="#c19976"/>
+  <line x1="178" y1="75" x2="144" y2="85" stroke="#c19976"/>
+  <line x1="100" y1="20" x2="100" y2="50" stroke="#c19976"/>
+  <line x1="22" y1="75" x2="56" y2="85" stroke="#c19976"/>
+  <line x1="52" y1="168" x2="73" y2="140" stroke="#c19976"/>
+</svg>

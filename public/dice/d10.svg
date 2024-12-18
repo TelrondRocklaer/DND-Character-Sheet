@@ -1,0 +1,13 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer Hexagon -->
+  <polygon points="100,180 20,120 20,80 100,20 180,80 180,120" stroke="#c19976" fill="none" />
+
+  <!-- Internal Lines -->
+  <line x1="20" y1="120" x2="50" y2="120" stroke="#c19976"/>
+  <line x1="150" y1="120" x2="180" y2="120" stroke="#c19976"/>
+  <line x1="100" y1="150" x2="50" y2="120" stroke="#c19976"/>
+  <line x1="100" y1="150" x2="150" y2="120" stroke="#c19976"/>
+  <line x1="50" y1="120" x2="100" y2="20" stroke="#c19976"/>
+  <line x1="150" y1="120" x2="100" y2="20" stroke="#c19976"/>
+  <line x1="100" y1="180" x2="100" y2="150" stroke="#c19976"/>
+</svg>
