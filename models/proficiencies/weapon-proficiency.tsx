@@ -16,7 +16,6 @@ export default class WeaponProficiency extends Proficiency {
     this.weaponType = await ApiRequests.getWeaponType(this.weaponTypeId)
   }
 
-
   async applyProficiency() {
     await this.initializeWeaponType();
     playerCharacterStore.getState().playerCharacter.weaponProficiencies.add(this.weaponType);

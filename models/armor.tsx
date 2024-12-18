@@ -3,6 +3,7 @@ import Spell from "@/models/spell";
 import EffectFactory from "@/models/effects/effect-factory";
 import Effect from "@/models/effects/effect";
 import ArmorType from "@/models/armor-type";
+import ApiRequests from "@/app/api-requests";
 
 export default class Armor {
   id: number;
@@ -31,5 +32,10 @@ export default class Armor {
     this.armorType = data.armorType;
     this.traits = (data.traits) ? data.traits.map((trait: Trait) => new Trait(trait)) : [];
     this.spells = (data.spells) ? data.spells : [];
+    this.initializeArmorType();
+  }
+
+  async initializeArmorType() {
+    this.armorType = await ApiRequests.getArmorType(this.armorTypeId)
   }
 }

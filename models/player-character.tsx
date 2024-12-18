@@ -108,13 +108,14 @@ export default class PlayerCharacter {
       this.race.languages.forEach(language => this.languages.add(language));
       this.movementSpeed = this.race.baseMovementSpeed;
     }
-    this.languages = (data.languages) ? data.languages.reduce((uniqueLanguages: Language[], languageData: any) => {
+    data.languages ? data.languages.forEach((language: Language) => this.languages.add(new Language(language))) : [];
+    this.languages = new Set<Language>(Array.from(this.languages).reduce((uniqueLanguages: Language[], languageData: any) => {
       const language = new Language(languageData);
       if (!uniqueLanguages.some(l => l.equals(language))) {
         uniqueLanguages.push(language);
       }
       return uniqueLanguages;
-    }, []) : this.languages;
+    }, []));
     usePlayerCharacterStore.getState().setPlayerCharacter(this);
     const uniqueProficiencies = new Set<Proficiency>();
     this.proficiencies.forEach(proficiency => {
@@ -123,18 +124,18 @@ export default class PlayerCharacter {
       }
     });
     this.proficiencies = uniqueProficiencies;
-    this.proficiencies.forEach(async (proficiency) => await proficiency.applyProficiency());
+    this.proficiencies.forEach(async proficiency => await proficiency.applyProficiency());
     if (this.equippedArmor) {
-      this.equippedArmor.forEach((armor) => armor.effects.forEach(async (effect) => await effect.applyEffect()));
+      this.equippedArmor.forEach(armor => armor.effects.forEach(async effect => await effect.applyEffect()));
     }
     if (this.equippedWeapons) {
-      this.equippedWeapons.forEach((weapon) => weapon.effects.forEach(async (effect) => await effect.applyEffect()));
+      this.equippedWeapons.forEach(weapon => weapon.effects.forEach(async effect => await effect.applyEffect()));
     }
     if (this.feats) {
-      this.feats.forEach((feat) => feat.effects.forEach(async (effect) => await effect.applyEffect()));
+      this.feats.forEach(feat => feat.effects.forEach(async effect => await effect.applyEffect()));
     }
     if (this.activeConditions) {
-      this.activeConditions.forEach((condition) => condition.effects.forEach(async (effect) => await effect.applyEffect()));
+      this.activeConditions.forEach(condition => condition.effects.forEach(async effect => await effect.applyEffect()));
     }
   }
 
@@ -154,6 +155,10 @@ export default class PlayerCharacter {
     return 10 + this.attributes.wisdom.modifier() + (this.attributes.wisdom.get("insight")?.proficient ? this.proficiencyBonus() : 0);
   }
 
+  public initiative = (): number => {
+    return this.attributes.dexterity.modifier();
+  }
+
   public longRest = (): void => {
     this.currentHitPoints = this.maxHitPoints;
     this.temporaryHitPoints = 0;
@@ -162,6 +167,7 @@ export default class PlayerCharacter {
     this.concentrating = false;
     this.hitDieCount = Math.max(1, Math.floor(this.level / 2));
     this.activeConditions.clear();
+    this.spellSlots.forEach(slot => slot.used = 0);
   }
 
   toJSON() {

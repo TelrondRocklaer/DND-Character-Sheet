@@ -3,6 +3,7 @@ import Spell from "@/models/spell";
 import Effect from "@/models/effects/effect";
 import EffectFactory from "@/models/effects/effect-factory";
 import WeaponType from "@/models/weaponType";
+import ApiRequests from "@/app/api-requests";
 
 export default class Weapon {
   id: number;
@@ -33,5 +34,10 @@ export default class Weapon {
     this.attunementRequired = data.attunementRequired;
     this.traits = (data.traits) ? data.traits.map((trait: any) => new Trait(trait)) : [];
     this.spells = (data.spells) ? data.spells : [];
+    this.initializeWeaponType();
+  }
+
+  async initializeWeaponType() {
+    this.weaponType = await ApiRequests.getWeaponType(this.weaponTypeId)
   }
 }

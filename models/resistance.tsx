@@ -30,6 +30,25 @@ class Resistance {
   public get(name: string): DamageType | undefined {
     return (this as any)[name];
   }
+
+  public getAll(): DamageType[] {
+    return [
+      this.bludgeoning,
+      this.piercing,
+      this.slashing,
+      this.fire,
+      this.cold,
+      this.poison,
+      this.acid,
+      this.lightning,
+      this.thunder,
+      this.psychic,
+      this.necrotic,
+      this.radiant,
+      this.force,
+    ];
+  }
 }
 
 export default Resistance;
+export { DamageType };

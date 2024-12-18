@@ -7,7 +7,7 @@ export default class Class {
   id: number;
   name: string;
   primaryAbility: string;
-  hitDie: number;
+  hitDie: string;
   specialPointsName: string;
   skillProficiencyOptions: string[];
   startingGold: number;

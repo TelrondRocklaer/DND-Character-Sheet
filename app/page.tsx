@@ -7,6 +7,9 @@ import DiceRoller from '../components/dice-roller';
 import {AnimatePresence, motion} from 'framer-motion';
 import ApiRequests from "@/app/api-requests";
 import usePlayerCharacterStore from "@/stores/player-character-store";
+import {permanentRedirect} from "next/navigation";
+import {DamageType} from "@/models/resistance";
+import Spell from "@/models/spell";
 
 export default function Home() {
   const [playerCharacter, setPlayerCharacter] = useState<PlayerCharacter>();
@@ -18,10 +21,14 @@ export default function Home() {
   const [tempRollKey, setTempRollKey] = useState(-1);
   const [rollHistory, setRollHistory] = useState<{ key: number, name: string, result: number }[]>([]);
   const [showRollHistory, setShowRollHistory] = useState(false);
-  const [healDamageDiv, setHealDamageDiv] = useState<boolean | undefined>(undefined);
+  const [showCustomRoll, setShowCustomRoll] = useState(false);
+  const [customDice, setCustomDice] = useState('');
+  const [tempHPDiv, setTempHPDiv] = useState<boolean | undefined>(undefined);
+  const [tempHPAmount, setTempHPAmount] = useState(0);
   const [healDamageAmount, setHealDamageAmount] = useState(0);
-  const menuItems = ["Combat", "Inventory", "General", "Notes"];
-  const [clickedMenuItem, setClickedMenuItem] = useState("Combat");
+  const [showHealDamageMenu, setShowHealDamageMenu] = useState(false);
+  const menuItems = ["Combat", "General", "Notes"];
+  const [clickedMenuItem, setClickedMenuItem] = useState("General");
   const playerCharacterStore = usePlayerCharacterStore();
 
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -30,9 +37,14 @@ export default function Home() {
 
   useEffect(() => {
     async function fetchPC() {
-      const data = await ApiRequests.fetchPlayerCharacter("519727ee-0f5f-418d-a9c1-e1c79594ba3a");
+      const pcId = localStorage.getItem("selectedCharacter");
+      if (!pcId) {
+        permanentRedirect("/login");
+      }
+      const data = await ApiRequests.fetchPlayerCharacter(pcId);
       setPlayerCharacter(data);
     }
+
     fetchPC();
     sessionStorage.clear();
   }, []);
@@ -53,7 +65,11 @@ export default function Home() {
       setRollHistory([...rollHistory, {key: diceComponentKey, name: rollName, result: result}]);
       if (inspirationUsed) {
         if (playerCharacter) {
-          setPlayerCharacter({...playerCharacter, inspiration: false, toJSON: playerCharacter.toJSON.bind(playerCharacter)});
+          setPlayerCharacter({
+            ...playerCharacter,
+            inspiration: false,
+            toJSON: playerCharacter.toJSON.bind(playerCharacter)
+          });
         }
       }
     } else {
@@ -88,7 +104,10 @@ export default function Home() {
 
       <div className={(showDiceRoller ? "hidden" : "")}>
         {playerCharacter && (
-          <div className="flex flex-col items-center m-5 select-none">
+          <motion.div className="flex flex-col items-center m-5 select-none"
+                      initial={{opacity: 0}} animate={{opacity: 1}}
+                      transition={{type: "tween", ease: "anticipate", duration: 0.5}}
+          >
 
             <div className="flex flex-row">
               <div className="flex flex-row space-x-5 mb-5">
@@ -99,8 +118,8 @@ export default function Home() {
                               whileHover={{scale: 1.05}}
                   >
                     <Image src="/main-sheet/Attribute.svg" alt="Attribute" className="object-contain w-24 h-auto"
-                           width={0}
-                           height={0} priority={true}/>
+                           width={0} height={0} priority={true}
+                    />
                     <div className="absolute flex flex-col items-center justify-center"
                          onClick={() => {
                            setRollName(`${attribute.name} Check`);
@@ -139,7 +158,11 @@ export default function Home() {
                       {!playerCharacter.inspiration &&
                           <motion.button whileHover={{scale: 1.05}}>
                               <Image src="/plus.svg" alt="Plus" width={20} height={20} className="ml-3"
-                                     onClick={() => setPlayerCharacter({...playerCharacter, inspiration: true, toJSON: playerCharacter.toJSON.bind(playerCharacter)})}
+                                     onClick={() => setPlayerCharacter({
+                                       ...playerCharacter,
+                                       inspiration: true,
+                                       toJSON: playerCharacter.toJSON.bind(playerCharacter)
+                                     })}
                               />
                           </motion.button>
                       }
@@ -163,63 +186,48 @@ export default function Home() {
                     <div className="flex flex-col justify-center">
                       <motion.button className="border border-primary text-xs p-1 m-0.5 text-center"
                                      whileHover={{scale: 1.05}}
-                                     onClick={() => setHealDamageDiv(true)}
+                                     onClick={() => setTempHPDiv(true)}
                       >
-                        Heal
+                        Add
                       </motion.button>
                       <div className="flex flex-row items-center">
-                        <input type="number" value={healDamageAmount} disabled={healDamageDiv === undefined}
-                               onChange={(e) => setHealDamageAmount(+e.target.value)}
+                        <input type="number" value={tempHPAmount} disabled={tempHPDiv === undefined}
+                               onChange={(e) => setTempHPAmount(+e.target.value)}
                                className={"bg-background text-xl p-1 text-center w-9 outline-none " +
                                  "[appearance:textField] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" +
-                                 (healDamageDiv === undefined ? " opacity-0" : "")}
+                                 (tempHPDiv === undefined ? " opacity-0" : "")}
                         />
-                        <button className={"text-xs text-center" + (healDamageDiv === undefined ? " opacity-0" : "")}
-                                disabled={healDamageDiv === undefined}
+                        <button className={"text-xs text-center" + (tempHPDiv === undefined ? " opacity-0" : "")}
+                                disabled={tempHPDiv === undefined}
                                 onClick={() => {
-                                  if (healDamageAmount === 0) {
+                                  if (tempHPAmount === 0) {
                                     return;
                                   }
-                                  if (healDamageDiv === true) {
-                                    if (playerCharacter.currentHitPoints + healDamageAmount > playerCharacter.maxHitPoints) {
+                                  if (tempHPDiv === true) {
+                                    setPlayerCharacter({
+                                      ...playerCharacter,
+                                      temporaryHitPoints: playerCharacter.temporaryHitPoints + tempHPAmount,
+                                      toJSON: playerCharacter.toJSON.bind(playerCharacter)
+                                    });
+                                  }
+                                  else {
+                                    if (playerCharacter.temporaryHitPoints - tempHPAmount < 0) {
                                       setPlayerCharacter({
                                         ...playerCharacter,
-                                        currentHitPoints: playerCharacter.maxHitPoints,
-                                        toJSON: playerCharacter.toJSON.bind(playerCharacter)
-                                      });
-                                    } else {
-                                      setPlayerCharacter({
-                                        ...playerCharacter,
-                                        currentHitPoints: playerCharacter.currentHitPoints + healDamageAmount,
+                                        temporaryHitPoints: 0,
                                         toJSON: playerCharacter.toJSON.bind(playerCharacter)
                                       });
                                     }
-                                  } else {
-                                    if (playerCharacter.temporaryHitPoints > 0) {
-                                      if (playerCharacter.temporaryHitPoints - healDamageAmount < 0) {
-                                        setPlayerCharacter({
-                                          ...playerCharacter,
-                                          currentHitPoints: playerCharacter.currentHitPoints - healDamageAmount,
-                                          temporaryHitPoints: 0,
-                                          toJSON: playerCharacter.toJSON.bind(playerCharacter)
-                                        });
-                                      } else {
-                                        setPlayerCharacter({
-                                          ...playerCharacter,
-                                          temporaryHitPoints: playerCharacter.temporaryHitPoints - healDamageAmount,
-                                          toJSON: playerCharacter.toJSON.bind(playerCharacter)
-                                        });
-                                      }
-                                    } else {
+                                    else {
                                       setPlayerCharacter({
                                         ...playerCharacter,
-                                        currentHitPoints: playerCharacter?.currentHitPoints - healDamageAmount,
+                                        temporaryHitPoints: playerCharacter.temporaryHitPoints - tempHPAmount,
                                         toJSON: playerCharacter.toJSON.bind(playerCharacter)
                                       });
                                     }
                                   }
-                                  setHealDamageDiv(undefined);
-                                  setHealDamageAmount(0);
+                                  setTempHPDiv(undefined);
+                                  setTempHPAmount(0);
                                 }}
                         >
                           OK
@@ -227,9 +235,9 @@ export default function Home() {
                       </div>
                       <motion.button className="border border-primary text-xs p-1 m-0.5 text-center"
                                      whileHover={{scale: 1.05}}
-                                     onClick={() => setHealDamageDiv(false)}
+                                     onClick={() => setTempHPDiv(false)}
                       >
-                        Damage
+                        Remove
                       </motion.button>
                     </div>
                     <div className="flex flex-col items-center justify-center">
@@ -496,19 +504,186 @@ export default function Home() {
                       <motion.div key="combat" initial={{opacity: 0}} animate={{opacity: 1}} exit={{opacity: 0}}
                                   transition={{type: "tween", ease: "anticipate", duration: 0.5}}
                       >
-                        Combat
-                      </motion.div>
-                    ) || clickedMenuItem === "Inventory" && (
-                      <motion.div key="inventory" initial={{opacity: 0}} animate={{opacity: 1}} exit={{opacity: 0}}
-                                  transition={{type: "tween", ease: "anticipate", duration: 0.5}}
-                      >
-                        Inventory
+                        <div className="p-4">
+                          <div className="flex flex-row space-x-10 border-b border-primary">
+                            <motion.div className="flex flex-col items-center justify-center mb-2 relative"
+                                        onClick={() => {
+                                          setRollName(`Initiative Roll`);
+                                          setDice('d20' + (playerCharacter.initiative() == 0 ? "" : (playerCharacter.initiative() > 0 ? "+" : "") + playerCharacter.initiative()));
+                                          setAdvantage(playerCharacter.attributes.dexterity.advantageOnChecks);
+                                          handleRollDice();
+                                        }}
+                                        whileHover={{scale: 1.05}}
+                            >
+                              <div className="text-xs text-center">INITIATIVE</div>
+                              <Image src="/main-sheet/Inspiration (Head).svg" alt="Inspiration (Head)" width={0}
+                                     height={0}
+                                     className="object-contain w-auto h-24" priority={true}
+                              />
+                              <div
+                                className="absolute text-6xl text-center">{playerCharacter.initiative() > 0 ? ("+" + playerCharacter.initiative()) : playerCharacter.initiative()}</div>
+                            </motion.div>
+                            <div className="flex flex-col items-center justify-center mb-2 relative">
+                              <div className="text-xs text-center">ARMOR CLASS</div>
+                              <Image src="/main-sheet/Armor Class.svg" alt="Armor Class" width={0} height={0}
+                                     className="object-contain w-auto h-24" priority={true}
+                              />
+                              <div className="absolute text-6xl text-center">{playerCharacter.armorClass}</div>
+                            </div>
+                            {playerCharacter.class && (
+                              <div className="flex flex-col items-center justify-center mb-2 relative">
+                                <div className="text-xs text-center">HIT DICE</div>
+                                <Image src={"/dice/" + playerCharacter.class.hitDie + ".svg"} alt="Hit Dice"
+                                       width={0} height={0} className="object-contain w-auto h-24" priority={true}
+                                />
+                                <div className="absolute text-6xl text-center">{playerCharacter.hitDieCount}</div>
+                              </div>
+                            )}
+                            <div className="grid grid-cols-7 grid-rows-2 space-x-3 mb-2">
+                              {playerCharacter.resistances.getAll().map((damageType: DamageType) => (
+                                <div key={damageType.damageType}
+                                     className="flex flex-col items-center justify-center group"
+                                >
+                                  <Image src={"/damage-types/" + damageType.damageType + ".svg"}
+                                         alt={damageType.damageType}
+                                         width={0} height={0} className="object-contain w-14 h-auto group-hover:hidden"
+                                         priority={true}
+                                  />
+                                  <div className="hidden group-hover:block">
+                                    {(damageType.immune || damageType.resistant || damageType.vulnerable) && (
+                                      <Image
+                                        src={"/damage-types/" + (damageType.immune ? "immunity" : damageType.resistant ? "resistance" : damageType.vulnerable ? "vulnerability" : "") + ".svg"}
+                                        alt="resistance" width={0} height={0} className="object-contain w-10 h-auto"
+                                        priority={true}
+                                      />
+                                    )}
+                                    <div className="text-xs text-center">{damageType.damageType}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="border-b border-primary">
+                            <div className="text-2xl">Armor</div>
+                            {playerCharacter.equippedArmor.map(armor => (
+                              <div key={armor.id} className="flex flex-col ml-5 mb-2">
+                                <div className="text-xl">{armor.name} ({armor.armorType ? armor.armorType.name : ""},
+                                  AC: {armor.baseArmorClass}, {armor.cost} GP, {armor.weight} Lb)
+                                </div>
+                                <div className="text-xs">{armor.description}</div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="border-b border-primary">
+                            <div className="text-2xl">Weapons</div>
+                            <table className="ml-5">
+                              <tbody>
+                              {playerCharacter.equippedWeapons.filter(w => w.weaponType !== undefined).map(weapon => (
+                                <tr key={weapon.id}>
+                                  <td className="text-xl p-3">{weapon.name}</td>
+                                  <td
+                                    className="text-xl p-3">{weapon.weaponType.baseDamage} {weapon.weaponType.damageType}</td>
+                                  <td
+                                    className="text-xl p-3">{weapon.weaponType.properties.map(p => p.name + " (" + p.extraInfo + ")").join(', ')}</td>
+                                  <motion.td className="p-3 cursor-pointer text-xl"
+                                             onClick={() => {
+                                               setRollName(`${weapon.name} Attack Roll`);
+                                               const properties = weapon.weaponType.properties.map(p => p.name);
+                                               setDice('d20' + ((properties.includes("Ranged") || properties.includes("Finesse") || properties.includes("Thrown")) ? (playerCharacter.attributes.dexterity.modifier() == 0 ? "" : (playerCharacter.attributes.dexterity.modifier() > 0 ? "+" : "") + playerCharacter.attributes.dexterity.modifier())
+                                                   : (playerCharacter.attributes.strength.modifier() == 0 ? "" : (playerCharacter.attributes.strength.modifier() > 0 ? "+" : "") + playerCharacter.attributes.strength.modifier()))
+                                                 + (playerCharacter.weaponProficiencies.has(weapon.weaponType) ? "+" + playerCharacter.proficiencyBonus() : "") + "+" + weapon.magicBonus + (playerCharacter.weaponAttackRollBonus > 0 ? "+" + playerCharacter.weaponAttackRollBonus : playerCharacter.weaponAttackRollBonus)
+                                               );
+                                               handleRollDice();
+                                             }}
+                                             whileHover={{scale: 1.05}}
+                                  >
+                                    Attack roll
+                                  </motion.td>
+                                  <motion.td className="p3 cursor-pointer text-xl"
+                                             onClick={() => {
+                                               setRollName(`${weapon.name} Damage Roll`);
+                                               setDice(weapon.weaponType.baseDamage + "+" + (weapon.magicBonus > 0 ? "+" + weapon.magicBonus : weapon.magicBonus));
+                                               handleRollDice();
+                                             }}
+                                             whileHover={{scale: 1.05}}
+                                  >
+                                    Damage roll
+                                  </motion.td>
+                                </tr>
+                              ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          <div className="border-b border-primary">
+                            <div className="text-2xl">Spells</div>
+                            <div className="flex flex-col ml-5">
+                              {Array.from(playerCharacter.spells).map((spell: Spell) => (
+                                <div key={spell.id} className="flex flex-col mb-2">
+                                  <div className="text-xl">{spell.name} ({spell.spellSlotLevel})</div>
+                                  <div className="text-xs">{spell.description}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
                       </motion.div>
                     ) || clickedMenuItem === "General" && (
                       <motion.div key="general" initial={{opacity: 0}} animate={{opacity: 1}} exit={{opacity: 0}}
                                   transition={{type: "tween", ease: "anticipate", duration: 0.5}}
                       >
-                        General
+                        <div className="flex flex-col space-y-2 p-4">
+                          <div className="border-b border-primary grid grid-cols-2">
+                            <div>
+                              <div className="text-2xl">{playerCharacter.name}, level {playerCharacter.level}</div>
+                              {playerCharacter.class && (
+                                <div className="text-2xl">
+                                  {playerCharacter.class.name}{playerCharacter.subclass ? ("(" + playerCharacter.subclass.name + ")") : ""}
+                                </div>
+                              )}
+                              {playerCharacter.subclass && (
+                                <div className="text-xs">{playerCharacter.subclass.description}</div>
+                              )}
+                            </div>
+                            {playerCharacter.class && (
+                              <div className="flex justify-end">
+                                <Image src={"/class-icons/Class Icon - " + playerCharacter.class.name + ".svg"}
+                                       alt={playerCharacter.class.name} width={200} height={200} priority={true}
+                                       className="mb-2"
+                                />
+                              </div>
+                            )}
+                          </div>
+                          {playerCharacter.race && (
+                            <div className="border-b border-primary">
+                              <div className="text-2xl">Race: {playerCharacter.race.name}</div>
+                              <div className="text-xl">Size: {playerCharacter.race.size}</div>
+                              <div className="text-xl">{playerCharacter.race.fullDescription}</div>
+                            </div>
+                          )}
+                          {playerCharacter.subrace && (
+                            <div className="border-b border-primary">
+                              <div className="text-2xl">Subrace: {playerCharacter.subrace.name}</div>
+                              <div className="text-xl">{playerCharacter.subrace.description}</div>
+                            </div>
+                          )}
+                          {playerCharacter.background && (
+                            <div className="border-b border-primary">
+                              <div className="text-2xl">Background: {playerCharacter.background.name}</div>
+                              <div className="text-xl">{playerCharacter.background.description}</div>
+                            </div>
+                          )}
+                          {playerCharacter.feats && playerCharacter.feats.size > 0 && (
+                            <div className="border-b border-primary">
+                              <div className="text-2xl">Feats</div>
+                              {Array.from(playerCharacter.feats).map((feat) => (
+                                <div key={feat.id}>
+                                  <div className="text-xs">{feat.name}</div>
+                                  <div className="text-xs">{feat.description}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </motion.div>
                     ) || clickedMenuItem === "Notes" && (
                       <motion.div key="notes" initial={{opacity: 0}} animate={{opacity: 1}} exit={{opacity: 0}}
@@ -532,7 +707,11 @@ export default function Home() {
                             <button className="mt-2 p-2 bg-primary text-background rounded-md w-full" onClick={() => {
                               if (playerCharacter && newNote.title !== '' && newNote.content !== '') {
                                 const updatedNotes = [...playerCharacter.notes, newNote];
-                                setPlayerCharacter({...playerCharacter, notes: updatedNotes, toJSON: playerCharacter.toJSON.bind(playerCharacter)});
+                                setPlayerCharacter({
+                                  ...playerCharacter,
+                                  notes: updatedNotes,
+                                  toJSON: playerCharacter.toJSON.bind(playerCharacter)
+                                });
                                 setNewNote({title: '', content: ''});
                               }
                             }}>
@@ -567,7 +746,11 @@ export default function Home() {
                                                   if (playerCharacter && editingIndex !== null && editedNote.title !== '' && editedNote.content !== '') {
                                                     const updatedNotes = [...playerCharacter.notes];
                                                     updatedNotes[editingIndex] = editedNote;
-                                                    setPlayerCharacter({...playerCharacter, notes: updatedNotes, toJSON: playerCharacter.toJSON.bind(playerCharacter)});
+                                                    setPlayerCharacter({
+                                                      ...playerCharacter,
+                                                      notes: updatedNotes,
+                                                      toJSON: playerCharacter.toJSON.bind(playerCharacter)
+                                                    });
                                                     setEditingIndex(null);
                                                   }
                                                 }}>
@@ -596,7 +779,11 @@ export default function Home() {
                                                 e.stopPropagation();
                                                 if (playerCharacter) {
                                                   const updatedNotes = playerCharacter.notes.filter((_, i) => i !== index);
-                                                  setPlayerCharacter({...playerCharacter, notes: updatedNotes, toJSON: playerCharacter.toJSON.bind(playerCharacter)});
+                                                  setPlayerCharacter({
+                                                    ...playerCharacter,
+                                                    notes: updatedNotes,
+                                                    toJSON: playerCharacter.toJSON.bind(playerCharacter)
+                                                  });
                                                 }
                                               }}>
                                         Delete
@@ -620,10 +807,15 @@ export default function Home() {
             <div>
               <motion.button
                 className="fixed bottom-5 right-5 w-12 h-12 bg-primary rounded-full flex items-center justify-center"
-                onClick={() => rollHistory.length !== 0 ? setShowRollHistory(!showRollHistory) : undefined}
+                onClick={() => {
+                  if (rollHistory.length !== 0) {
+                    setShowRollHistory(!showRollHistory);
+                  }
+                  setShowCustomRoll(false);
+                }}
                 whileHover={{scale: 1.1}}
               >
-                <Image src="roll-history.svg" alt="roll-history" width={45} height={45} priority={true}/>
+                <Image src="/roll-history.svg" alt="roll-history" width={45} height={45} priority={true}/>
               </motion.button>
 
               <AnimatePresence>
@@ -649,10 +841,53 @@ export default function Home() {
               </AnimatePresence>
             </div>
 
-            {/* Save button */}
+            {/* Custom roll button */}
             <div>
               <motion.button
                 className="fixed bottom-5 right-20 w-12 h-12 bg-primary rounded-full flex items-center justify-center"
+                onClick={() => {
+                  setShowCustomRoll(!showCustomRoll);
+                  setShowRollHistory(false);
+                }}
+                whileHover={{scale: 1.1}}
+              >
+                <Image src="/custom-roll.svg" alt="custom-roll" width={45} height={45} priority={true}/>
+              </motion.button>
+              <AnimatePresence>
+                {showCustomRoll && (
+                  <motion.div className="fixed bottom-20 right-5 w-96 h-28 p-4 rounded flex items-center justify-center"
+                              exit={{opacity: 0, scale: 0.95, transition: {duration: 0.3, ease: "easeInOut"}}}
+                              initial={{opacity: 0, scale: 0.95}}
+                              animate={{opacity: 1, scale: 1, transition: {duration: 0.3, ease: "easeInOut"}}}
+                  >
+                    <Image src="/main-sheet/Bonds & Ideals.svg" alt="Bonds & Ideals" className="object-contain" fill
+                           priority={true}/>
+                    <div className="absolute flex flex-col items-center justify-start w-full p-6">
+                      <input type="text" placeholder="Dice" value={customDice}
+                             onChange={(e) => setCustomDice(e.target.value)}
+                             className="w-full p-2 mb-2 border border-primary rounded-md bg-background outline-none"
+                      />
+                      <button className="p-2 bg-primary text-background rounded-md w-full"
+                              onClick={() => {
+                                setRollName("Custom roll");
+                                setDice(customDice);
+                                handleRollDice();
+                                setShowCustomRoll(false);
+                                setCustomDice('');
+                              }}
+                      >
+                        Roll
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Save button */}
+            <div>
+              <motion.button
+                className="fixed top-20 right-5 w-12 h-12 bg-primary rounded-full flex items-center justify-center"
                 onClick={savePlayerCharacter}
                 whileHover={{scale: 1.1}}
               >
@@ -660,7 +895,129 @@ export default function Home() {
               </motion.button>
             </div>
 
-          </div>
+            {/* Profile button */}
+            <div>
+              <motion.button
+                className="fixed top-5 right-5 w-12 h-12 bg-primary rounded-full flex items-center justify-center"
+                onClick={() => permanentRedirect("/profile")}
+                whileHover={{scale: 1.1}}
+              >
+                <Image src="/profile.svg" alt="profile" width={45} height={45} priority={true}/>
+              </motion.button>
+            </div>
+
+            {/* Heal / Damage menu */}
+            <div>
+              <motion.button
+                className="fixed top-5 right-20 w-12 h-12 bg-primary rounded-full flex items-center justify-center"
+                onClick={() => {
+                  setShowHealDamageMenu(!showHealDamageMenu);
+                }}
+                whileHover={{scale: 1.1}}
+              >
+                <Image src="/slashing-dark.svg" alt="slashing-dark" width={35} height={35} priority={true}/>
+              </motion.button>
+              <AnimatePresence>
+                {showHealDamageMenu && (
+                  <motion.div className="fixed top-20 right-5 w-96 h-28 p-4 rounded flex items-center justify-center"
+                              exit={{opacity: 0, scale: 0.95, transition: {duration: 0.3, ease: "easeInOut"}}}
+                              initial={{opacity: 0, scale: 0.95}}
+                              animate={{opacity: 1, scale: 1, transition: {duration: 0.3, ease: "easeInOut"}}}
+                  >
+                    <Image src="/main-sheet/Bonds & Ideals.svg" alt="Bonds & Ideals" className="object-contain" fill
+                           priority={true}/>
+                    <div className="absolute inset-0 flex flex-col items-center justify-start overflow-y-scroll p-4">
+                      <input type="number" value={healDamageAmount}
+                             onChange={(e) => setHealDamageAmount(+e.target.value)}
+                             className={"p-2 mb-2 w-32 border border-primary rounded-md bg-background outline-none "
+                               + "[appearance:textField] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"}
+                      />
+                      <div className="grid grid-cols-7 grid-rows-2 space-x-3">
+                        {playerCharacter.resistances.getAll().map((damageType: DamageType) => (
+                          <div key={damageType.damageType}
+                               className="flex flex-col items-center justify-center group"
+                               onClick={() => {
+                                 if (damageType.immune) {
+                                   setHealDamageAmount(0);
+                                 }
+                                 else if (damageType.resistant) {
+                                   setHealDamageAmount(Math.ceil(healDamageAmount / 2));
+                                 }
+                                 else if (damageType.vulnerable) {
+                                   setHealDamageAmount(healDamageAmount * 2);
+                                 }
+                                 if (playerCharacter.temporaryHitPoints > 0) {
+                                   if (playerCharacter.temporaryHitPoints - healDamageAmount < 0) {
+                                     setPlayerCharacter({
+                                       ...playerCharacter,
+                                       currentHitPoints: playerCharacter.currentHitPoints - healDamageAmount + playerCharacter.temporaryHitPoints,
+                                       temporaryHitPoints: 0,
+                                       toJSON: playerCharacter.toJSON.bind(playerCharacter)
+                                     });
+                                   }
+                                   else {
+                                     setPlayerCharacter({
+                                       ...playerCharacter,
+                                       temporaryHitPoints: playerCharacter.temporaryHitPoints - healDamageAmount,
+                                       toJSON: playerCharacter.toJSON.bind(playerCharacter)
+                                     });
+                                   }
+                                 }
+                                 else {
+                                   setPlayerCharacter({
+                                     ...playerCharacter,
+                                     currentHitPoints: playerCharacter.currentHitPoints - healDamageAmount,
+                                     toJSON: playerCharacter.toJSON.bind(playerCharacter)
+                                   });
+                                 }
+                                 setShowHealDamageMenu(false);
+                                 setHealDamageAmount(0);
+                               }}
+                          >
+                            <Image src={"/damage-types/" + damageType.damageType + ".svg"}
+                                   alt={damageType.damageType}
+                                   width={0} height={0} className="object-contain w-12 h-auto group-hover:hidden"
+                                   priority={true}
+                            />
+                            <div className="hidden group-hover:block">
+                              <div className="text-xs text-center">{damageType.damageType}</div>
+                            </div>
+                          </div>
+                        ))}
+                        <div className="flex flex-col items-center justify-center group"
+                             onClick={() => {
+                               if (playerCharacter.currentHitPoints + healDamageAmount > playerCharacter.maxHitPoints) {
+                                 setPlayerCharacter({
+                                   ...playerCharacter,
+                                   currentHitPoints: playerCharacter.maxHitPoints,
+                                   toJSON: playerCharacter.toJSON.bind(playerCharacter)
+                                 });
+                               } else {
+                                 setPlayerCharacter({
+                                   ...playerCharacter,
+                                   currentHitPoints: playerCharacter.currentHitPoints + healDamageAmount,
+                                   toJSON: playerCharacter.toJSON.bind(playerCharacter)
+                                 });
+                               }
+                               setShowHealDamageMenu(false);
+                               setHealDamageAmount(0);
+                             }}
+                        >
+                          <Image src="/plus.svg" alt="plus" width={0} height={0}
+                                 className="object-contain w-12 h-auto group-hover:hidden" priority={true}
+                          />
+                          <div className="hidden group-hover:block">
+                            <div className="text-xs text-center">heal</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+          </motion.div>
         )}
       </div>
     </div>

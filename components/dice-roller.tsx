@@ -180,7 +180,9 @@ export default function DiceRoller({
                       initial="hidden" animate="visible" variants={diceVariants}
                       transition={{duration: 0.5, delay: (chunkIndex * chunkSize + index) * 0.05}}
           >
-            <Image src={"/dice/d" + roll.sides + ".svg"} className="object-contain" fill alt="Dice"/>
+            {(roll.sides === 20 || roll.sides === 12 || roll.sides === 10 || roll.sides === 8 || roll.sides === 6 || roll.sides === 4) && (
+              <Image src={"/dice/d" + roll.sides + ".svg"} className="object-contain" fill alt="Dice"/>
+            )}
             <p className="absolute inset-0 flex items-center justify-center text-center">{roll.result}</p>
           </motion.div>
         ))}
